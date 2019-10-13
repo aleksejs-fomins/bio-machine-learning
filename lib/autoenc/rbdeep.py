@@ -2,36 +2,31 @@ import numpy as np
 
 class RaoBallardDeep:
     def __init__(self, p):
-        self.nLayer = len(p['nNode'])
+        self.nLayer = len(p['nNode']) - 1
 
         self.etaNeuro = p['dt'] / p['tauX']
         self.etaSP    = p['dt'] / p['tauU']
+        self.nu       = p['inputNoise']
 
         self.func = p['nonlinFunc']
         self.fprim = p['nonlinPrimFunc']
 
-        # Values of hidden layers
+        # Initialize hidden layers and matrices
         self.r = []
-        for i in range(self.nLayer):
-            self.r += [np.random.uniform(0.9, 1, p['nNode'][i])]
-
-        # Values of matrices
         self.u = []
-        for i in range(1, self.nLayer):
-            uThis = np.random.uniform(0, 1, (p['nNode'][i], p['nNode'][i - 1]))
-            self.u += [uThis / np.linalg.norm(uThis)]
+        for i in range(self.nLayer):
+            self.r += [np.random.uniform(0, 1, p['nNode'][i + 1])]
+            uThis  = np.random.uniform(0, 1, (p['nNode'][i], p['nNode'][i + 1]))  # Note in RB matrices are feedback-oriented
+            self.u += [p['uNorm'] * uThis / np.linalg.norm(uThis)]
 
         # Storage for temporarily logged variables
-        self.log = []
+        self.log = {"r" : [], "err" : [], "u" : []}
 
 
-    def err(self, i, x, r, u, func, fprim):
-        rEff = x if i == 0 else r[i - 1]
-        lin = u[i].dot(r[i])
-        f = func[i](lin)
-        g = fprim[i](lin)
-        err = rEff - f
-        errg = err * g
+    def err(self, rEff, r, u, func, fprim):
+        lin = u.dot(r)
+        err = rEff - func(lin)
+        errg = err * fprim(lin)
         return err, errg
 
     def rhsR(self, err, errgLst, u, i):
@@ -48,11 +43,16 @@ class RaoBallardDeep:
     # Update system by presenting input x for time nt
     def step(self, x, nt, withSP, withLog):
         for it in range(nt):
+            # Add a bit of noise to input at every time step
+            inpThis = x + self.nu * np.random.normal(0, 1, x.shape[0])
+
             # Compute linear and nonlinear prediction errors
             errLst = []
             errgLst = []
-            for i, r, u, func, fprim in enumerate(self.r, self.u, self.func, self.fprim):
-                err, errg = self.err(i, x, r, u, func, fprim)
+            rEffLst = [inpThis] + self.r[:-1]
+
+            for (rEff, r, u, func, fprim) in zip(rEffLst, self.r, self.u, self.func, self.fprim):
+                err, errg = self.err(rEff, r, u, func, fprim)
                 errLst += [err]
                 errgLst += [errg]
 
@@ -68,10 +68,11 @@ class RaoBallardDeep:
                 self.r[i] += self.etaNeuro * rhsR[i]
                 if withSP:
                     self.u[i] += self.etaSP * rhsU[i]
+                    self.u[i] = np.clip(self.u[i], 0, 100)   # synapses can not be negative
 
             # Log variables if requested
             if withLog:
-                log = (self.r, errLst)
+                self.log['r'] += [[np.copy(r) for r in self.r]]
+                self.log['err'] += [errLst]
                 if withSP:
-                    log += ([np.linalg.norm(u) for u in self.u], )
-                self.log += [log]
+                    self.log['u'] += [[np.linalg.norm(u) for u in self.u]]
