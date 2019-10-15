@@ -6,6 +6,7 @@ class echoSimpleHp:
         # Parameters
         self.p = {
             'nNode'     : p['nNode'],
+            'xMax'      : p['xMax'],
             'etaX'      : p['dt'] / p['tauX'],
             'etaHpBeta' : p['dt'] / p['tauHpBeta'],
             'hpMax'     : p['hpMax'],
@@ -45,8 +46,11 @@ class echoSimpleHp:
         for iStep in range(nStep):
             rhsX, rhsHpBeta, WEff = self.rhs(self.x, self.W, self.hpBeta, inp)
 
-            self.x += self.p['etaX'] * rhsX
+            self.x      += self.p['etaX'] * rhsX
             self.hpBeta += self.p['etaHpBeta'] * rhsHpBeta
+
+            # Truncate x to available range
+            self.x[self.x > self.p['xMax']] = self.p['xMax']
 
             if log:
                 M = (1 - self.p['etaX']) * np.eye(self.p['nNode']) + self.p['etaX'] * WEff

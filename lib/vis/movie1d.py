@@ -9,16 +9,18 @@ from lib.vis.matplotlib_helper import fig2numpy
 def time_bars(xx, outfname, dpi=100, figW=600, figH=600, logy=False):
     nTrial, nNode = xx.shape
     xMin = np.min(xx)
-    xMax = np.max(xx)
+    xMax = np.max(xx) * 1.05
     barXAxis = np.arange(nNode)
 
     print("Writing bars movie to", outfname)
     with cvWriter(outfname, (figW, figH), isColor=True) as movieWriter:
         fig = plt.figure(figsize=(figW / dpi, figH / dpi), dpi=dpi)
-        plt.xlim(0, nNode)
-        plt.ylim(xMin, xMax)
         if logy:
             plt.yscale('log')
+            xMax *= 10
+        plt.xlim(0, nNode)
+        plt.ylim(xMin, xMax)
+
         barData = plt.bar(barXAxis, xx[0])
         for iFrame, x in enumerate(xx):
             print("Writing video [" + str(iFrame + 1) + '/' + str(nTrial) + ']\r')#, end="")

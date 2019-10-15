@@ -1,21 +1,20 @@
 import numpy as np
 from lib.nonlinFunctions import func_step, outer_same
 
-class echoSimpleHp:
+class echoSimpleHpStdp:
     def __init__(self, p):
         # Parameters
         self.p = {
             'nNode'         : p['nNode'],
+            'xMax'          : p['xMax'],
             'etaX'          : p['dt'] / p['tauX'],
-            'etaXmu'        : p['dt'] / p['tauXmu'],
-            'etaXStd'       : p['dt'] / p['tauXStd'],
+            'etaXMu'        : p['dt'] / p['tauXMu'],
             'etaHP'         : p['dt'] / p['tauHP'],
             'etaSTDP'       : p['dt'] / p['tauSTDP'],
             'hpMax'         : p['hpMax'],
             'hpXMean'       : p['hpXMean'],
             'wMax'          : p['wMax'],
             'stdpCorrMean'  : p['stdpCorrMean'],
-
         }
 
         # Variables
@@ -30,12 +29,14 @@ class echoSimpleHp:
 
         # STDP
         self.xMu = np.zeros(p['nNode'])
-        self.xStd  = np.ones(p['nNode'])
+        self.xS2 = np.ones(p['nNode'])
 
         self.logX = []
         self.logW = []
+        self.logXS2 = []
+        self.logZetaStdp = []
 
-    def rhs(self, x, xMu, xStd, thetaThr, thetaW, inp):
+    def rhs(self, x, xMu, xS2, thetaThr, thetaW, inp):
         # Threshold:
         #   linear in range [0,1], clipped outside
         thr = self.p['hpMax'] * np.clip(thetaThr, 0, 1)
@@ -55,26 +56,32 @@ class echoSimpleHp:
 
         # Correlation STDP
         rhsXMu = - xMu + x
-        rhsXStd = - xStd + (x-xMu)**2
-        zetaStdp = (x - rhsXMu) / rhsXStd
+        rhsXS2 = - xS2 + (x-xMu)**2
+        zetaStdp = (x - xMu) / np.sqrt(xS2)
         corrStdp = np.outer(zetaStdp, zetaStdp)
         gammaStdp = 1 - corrStdp / self.p['stdpCorrMean']
         rhsThetaW = func_step(gammaStdp) * func_step(1 - thetaW) - func_step(-gammaStdp) * func_step(thetaW)
+        rhsThetaW[self.thetaW == 0] = 0   # Non-existent synapses have no plasticity
 
-        return rhsX, rhsXMu, rhsXStd, rhsThetaThr, rhsThetaW, WEff
+        return rhsX, rhsXMu, rhsXS2, rhsThetaThr, rhsThetaW, WEff, zetaStdp
 
     def step(self, nStep, inp=None, log=False):
         for iStep in range(nStep):
-            rhsX, rhsXMu, rhsXStd, rhsThetaThr, rhsThetaW, WEff = self.rhs(self.x, self.xMu, self.xStd, self.thetaThr, self.thetaW, inp)
+            rhsX, rhsXMu, rhsXS2, rhsThetaThr, rhsThetaW, WEff, zetaStdp = self.rhs(self.x, self.xMu, self.xS2, self.thetaThr, self.thetaW, inp)
 
             self.x         += self.p['etaX'] * rhsX
             self.xMu       += self.p['etaXMu'] * rhsXMu
-            self.xStd      += self.p['etaXStd'] * rhsXStd
+            self.xS2       += self.p['etaXMu'] * rhsXS2
             self.thetaThr  += self.p['etaHP'] * rhsThetaThr
             self.thetaW    += self.p['etaSTDP'] * rhsThetaW
+
+            # Truncate x to available range
+            self.x[self.x > self.p['xMax']] = self.p['xMax']
 
             if log:
                 M = (1 - self.p['etaX']) * np.eye(self.p['nNode']) + self.p['etaX'] * WEff
 
                 self.logX += [np.copy(self.x)]
                 self.logW += [np.linalg.eigvals(M)]
+                self.logXS2 += [np.copy(self.xS2)]
+                self.logZetaStdp += [np.copy(zetaStdp)]
