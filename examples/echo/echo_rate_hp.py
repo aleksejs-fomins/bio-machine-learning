@@ -1,7 +1,7 @@
 import numpy as np
 
-from lib.echo.sparseHp import echoSimpleHp  # Echo state network
-import lib.vis.movie1d as movie1d           # Plot movies of activity
+from lib.echo.rateHP import EchoRateHp  # Echo state network
+import lib.vis.movie1d as movie1d       # Plot movies of activity
 
 param = {
     'nNode'        : 100,
@@ -17,7 +17,7 @@ param = {
 inp = np.random.uniform(0, 1, param['nNode'])
 
 # Run model
-model = echoSimpleHp(param)
+model = EchoRateHp(param)
 model.step(500, inp=inp, log=True)
 
 # Plot activities
