@@ -1,6 +1,6 @@
 import numpy as np
 
-class echoSimple:
+class EchoRate:
     def __init__(self, p):
         # Parameters
         self.etaX = p['dt'] / p['tauX']

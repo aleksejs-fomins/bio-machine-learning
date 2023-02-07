@@ -1,7 +1,7 @@
 import numpy as np
 from lib.nonlinFunctions import func_step
 
-class echoSimpleHp:
+class EchoRateHp:
     def __init__(self, p):
         # Parameters
         self.p = {

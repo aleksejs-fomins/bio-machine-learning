@@ -1,7 +1,7 @@
 import numpy as np
 
-from lib.echo.sparse import echoSimple  # Echo state network
-import lib.vis.movie1d as movie1d       # Plot movies of activity
+from lib.echo.rate import EchoRate  # Echo state network
+import lib.vis.movie1d as movie1d   # Plot movies of activity
 
 param = {
     'nNode'    : 100,
@@ -11,7 +11,7 @@ param = {
 }
 
 # Run model
-model = echoSimple(param)
+model = EchoRate(param)
 model.step(20, log=True)
 
 # Plot activities

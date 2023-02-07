@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from lib.echo.sparseStdpChaos import echoSimpleHpStdp  # Echo state network
+from lib.echo.rateSTDPChaos import EchoRateSTDPChaos  # Echo state network
 import lib.vis.movie1d as movie1d           # Plot movies of activity
 
 param = {
@@ -23,7 +23,7 @@ inp = np.random.uniform(0, 1, param['nNode'])
 
 # Run model
 nStep = 10000
-model = echoSimpleHpStdp(param)
+model = EchoRateSTDPChaos(param)
 model.step(nStep, inp=inp, log=True)
 
 

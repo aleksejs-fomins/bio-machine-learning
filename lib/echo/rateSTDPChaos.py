@@ -1,7 +1,8 @@
 import numpy as np
 from lib.nonlinFunctions import func_step, outer_same
 
-class echoSimpleHpStdp:
+
+class EchoRateSTDPChaos:
     def __init__(self, p):
         # Parameters
         self.p = {
